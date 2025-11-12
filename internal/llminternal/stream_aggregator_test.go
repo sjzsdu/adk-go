@@ -18,8 +18,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"google.golang.org/adk/internal/testutil"
-	"google.golang.org/adk/model"
+	"github.com/sjzsdu/adk-go/internal/testutil"
+	"github.com/sjzsdu/adk-go/model"
 	"google.golang.org/genai"
 )
 

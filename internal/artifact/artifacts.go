@@ -17,8 +17,8 @@ package artifact
 import (
 	"context"
 
-	"google.golang.org/adk/agent"
-	"google.golang.org/adk/artifact"
+	"github.com/sjzsdu/adk-go/agent"
+	"github.com/sjzsdu/adk-go/artifact"
 	"google.golang.org/genai"
 )
 

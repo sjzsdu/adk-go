@@ -18,7 +18,7 @@ package toolutils
 import (
 	"fmt"
 
-	"google.golang.org/adk/model"
+	"github.com/sjzsdu/adk-go/model"
 	"google.golang.org/genai"
 )
 

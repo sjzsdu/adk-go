@@ -15,7 +15,7 @@
 package converters
 
 import (
-	"google.golang.org/adk/model"
+	"github.com/sjzsdu/adk-go/model"
 	"google.golang.org/genai"
 )
 

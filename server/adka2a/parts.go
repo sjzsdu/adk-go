@@ -21,7 +21,7 @@ import (
 	"slices"
 
 	"github.com/a2aproject/a2a-go/a2a"
-	"google.golang.org/adk/internal/converters"
+	"github.com/sjzsdu/adk-go/internal/converters"
 	"google.golang.org/genai"
 )
 

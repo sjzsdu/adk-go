@@ -23,10 +23,10 @@ import (
 	"runtime"
 	"strings"
 
-	"google.golang.org/adk/internal/llminternal"
-	"google.golang.org/adk/internal/llminternal/converters"
-	"google.golang.org/adk/internal/version"
-	"google.golang.org/adk/model"
+	"github.com/sjzsdu/adk-go/internal/llminternal"
+	"github.com/sjzsdu/adk-go/internal/llminternal/converters"
+	"github.com/sjzsdu/adk-go/internal/version"
+	"github.com/sjzsdu/adk-go/model"
 	"google.golang.org/genai"
 )
 

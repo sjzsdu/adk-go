@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"google.golang.org/adk/model"
+	"github.com/sjzsdu/adk-go/model"
 )
 
 // Session represents a series of interactions between a user and agents.

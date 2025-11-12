@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"google.golang.org/adk/internal/sessionutils"
+	"github.com/sjzsdu/adk-go/internal/sessionutils"
 	"rsc.io/omap"
 	"rsc.io/ordered"
 )

@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	"github.com/google/jsonschema-go/jsonschema"
-	"google.golang.org/adk/internal/toolinternal/toolutils"
-	"google.golang.org/adk/internal/typeutil"
-	"google.golang.org/adk/model"
-	"google.golang.org/adk/tool"
+	"github.com/sjzsdu/adk-go/internal/toolinternal/toolutils"
+	"github.com/sjzsdu/adk-go/internal/typeutil"
+	"github.com/sjzsdu/adk-go/model"
+	"github.com/sjzsdu/adk-go/tool"
 	"google.golang.org/genai"
 )
 

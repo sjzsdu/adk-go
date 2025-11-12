@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"google.golang.org/adk/model"
-	"google.golang.org/adk/session"
+	"github.com/sjzsdu/adk-go/model"
+	"github.com/sjzsdu/adk-go/session"
 	"google.golang.org/genai"
 )
 

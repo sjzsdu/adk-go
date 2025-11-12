@@ -32,8 +32,8 @@ package geminitool
 import (
 	"fmt"
 
-	"google.golang.org/adk/model"
-	"google.golang.org/adk/tool"
+	"github.com/sjzsdu/adk-go/model"
+	"github.com/sjzsdu/adk-go/tool"
 	"google.golang.org/genai"
 )
 

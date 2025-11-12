@@ -19,7 +19,7 @@ import (
 	"context"
 	"time"
 
-	"google.golang.org/adk/session"
+	"github.com/sjzsdu/adk-go/session"
 	"google.golang.org/genai"
 )
 
