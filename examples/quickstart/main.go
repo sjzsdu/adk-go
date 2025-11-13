@@ -16,28 +16,26 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 
 	"google.golang.org/adk/agent/llmagent"
 	"google.golang.org/adk/cmd/launcher"
 	"google.golang.org/adk/cmd/launcher/full"
-	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/server/restapi/services"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/geminitool"
-	"google.golang.org/genai"
+	"google.golang.org/adk/util/modelfactory"
 )
 
 func main() {
 	ctx := context.Background()
 
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
-		APIKey: os.Getenv("GOOGLE_API_KEY"),
-	})
-	if err != nil {
-		log.Fatalf("Failed to create model: %v", err)
-	}
+	flag.Parse()
+
+	model := modelfactory.MustCreateModel(ctx, nil)
 
 	agent, err := llmagent.New(llmagent.Config{
 		Name:        "weather_time_agent",
@@ -57,6 +55,7 @@ func main() {
 	}
 
 	l := full.NewLauncher()
+	fmt.Println(l.CommandLineSyntax(), os.Args[1:])
 	if err = l.Execute(ctx, config, os.Args[1:]); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}

@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"os"
 
@@ -27,12 +28,11 @@ import (
 	"google.golang.org/adk/cmd/launcher/full"
 	"google.golang.org/adk/examples/web/agents"
 	"google.golang.org/adk/model"
-	"google.golang.org/adk/model/gemini"
 	"google.golang.org/adk/server/restapi/services"
 	"google.golang.org/adk/session"
 	"google.golang.org/adk/tool"
 	"google.golang.org/adk/tool/geminitool"
-	"google.golang.org/genai"
+	"google.golang.org/adk/util/modelfactory"
 )
 
 func saveReportfunc(ctx agent.CallbackContext, llmResponse *model.LLMResponse, llmResponseError error) (*model.LLMResponse, error) {
@@ -50,14 +50,10 @@ func saveReportfunc(ctx agent.CallbackContext, llmResponse *model.LLMResponse, l
 
 func main() {
 	ctx := context.Background()
-	apiKey := os.Getenv("GOOGLE_API_KEY")
+	flag.Parse()
 
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
-		APIKey: apiKey,
-	})
-	if err != nil {
-		log.Fatalf("Failed to create model: %v", err)
-	}
+	model := modelfactory.MustCreateModel(ctx, nil)
+
 	sessionService := session.InMemoryService()
 	rootAgent, err := llmagent.New(llmagent.Config{
 		Name:        "weather_time_agent",
