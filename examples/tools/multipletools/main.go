@@ -32,6 +32,7 @@ import (
 	"github.com/sjzsdu/adk-go/tool/agenttool"
 	"github.com/sjzsdu/adk-go/tool/functiontool"
 	"github.com/sjzsdu/adk-go/tool/geminitool"
+	"github.com/sjzsdu/adk-go/util/modelfactory"
 )
 
 // Package main demonstrates a workaround for using multiple tool types (e.g.,
@@ -111,7 +112,9 @@ func main() {
 	}
 
 	l := full.NewLauncher()
-	if err = l.Execute(ctx, config, os.Args[1:]); err != nil {
+	// 过滤掉-model和-model-name参数，避免与launcher参数冲突
+	launcherArgs := modelfactory.ExtractLauncherArgs(os.Args[1:])
+	if err = l.Execute(ctx, config, launcherArgs); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}
 }
