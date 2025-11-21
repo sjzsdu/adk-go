@@ -66,7 +66,9 @@ func main() {
 	ctx := context.Background()
 	flag.Parse()
 
-	model := modelfactory.MustCreateModel(ctx, nil)
+	// 从命令行参数创建模型配置
+	modelConfig := modelfactory.NewFromFlags()
+	model := modelfactory.MustCreateModel(ctx, modelConfig)
 
 	sessionService := session.InMemoryService()
 	rootAgent, err := llmagent.New(llmagent.Config{
@@ -106,7 +108,9 @@ func main() {
 	}
 
 	l := full.NewLauncher()
-	if err = l.Execute(ctx, config, os.Args[1:]); err != nil {
+	// 过滤掉-model和-model-name参数，避免与launcher参数冲突
+	launcherArgs := modelfactory.ExtractLauncherArgs(os.Args[1:])
+	if err = l.Execute(ctx, config, launcherArgs); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}
 }
