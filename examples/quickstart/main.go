@@ -59,25 +59,8 @@ func main() {
 
 	l := full.NewLauncher()
 	// 只传递launcher需要的参数，跳过模型相关参数
-	launcherArgs := extractLauncherArgs(os.Args[1:])
+	launcherArgs := modelfactory.ExtractLauncherArgs(os.Args[1:])
 	if err = l.Execute(ctx, config, launcherArgs); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}
-}
-
-// extractLauncherArgs 从命令行参数中提取launcher需要的参数，跳过模型相关参数
-func extractLauncherArgs(args []string) []string {
-	var launcherArgs []string
-	for i := 0; i < len(args); i++ {
-		// 跳过模型相关参数
-		if args[i] == "-model" || args[i] == "-model-name" {
-			// 如果参数有值，也跳过下一个参数
-			if i+1 < len(args) && args[i+1][0] != '-' {
-				i++
-			}
-			continue
-		}
-		launcherArgs = append(launcherArgs, args[i])
-	}
-	return launcherArgs
 }
