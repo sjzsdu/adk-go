@@ -185,6 +185,12 @@ func (l *consoleLauncher) Run(ctx context.Context, config *launcher.Config) erro
 				fmt.Println("已成功读取vim编辑的内容")
 			}
 
+			// 如果输入为空（只包含空白字符），则保持用户输入状态
+			if strings.TrimSpace(userInput) == "" {
+				fmt.Print("\nUser -> ")
+				continue
+			}
+
 			userMsg := genai.NewContentFromText(userInput, genai.RoleUser)
 
 			streamingMode := l.config.streamingMode
