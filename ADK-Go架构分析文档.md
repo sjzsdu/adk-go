@@ -8,41 +8,47 @@ ADK-Go (Agent Development Kit for Go) 是 Google 开发的一个开源、代码�
 
 ```mermaid
 graph TB
-    subgraph "Application Layer"
+    subgraph "应用层"
         CLI[CLI Tools]
         WebServer[Web Server]
         Examples[Examples]
     end
     
-    subgraph "Core Framework"
+    subgraph "核心框架层"
         Runner[Runner]
         Agent[Agent Framework]
         Session[Session Management]
         Tool[Tool System]
     end
     
-    subgraph "Agent Types"
+    subgraph "代理类型"
         LLMAgent[LLM Agent]
         CustomAgent[Custom Agent]
         RemoteAgent[Remote Agent A2A]
         WorkflowAgents[Workflow Agents]
     end
     
-    subgraph "Workflow Agents"
+    subgraph "工作流代理"
         SequentialAgent[Sequential Agent]
         ParallelAgent[Parallel Agent] 
         LoopAgent[Loop Agent]
     end
     
-    subgraph "Storage & Services"
+    subgraph "存储与服务层"
         ArtifactService[Artifact Service]
         MemoryService[Memory Service]
         SessionService[Session Service]
     end
     
-    subgraph "Model Layer"
+    subgraph "模型层"
         LLM[LLM Interface]
         Gemini[Gemini Implementation]
+        OpenAI[OpenAI Implementation]
+        DeepSeek[DeepSeek Implementation]
+        Kimi[Kimi Implementation]
+        Qwen[Qwen Implementation]
+        SiliconFlow[SiliconFlow Implementation]
+        Zhipu[Zhipu Implementation]
     end
     
     CLI --> Runner
@@ -69,6 +75,12 @@ graph TB
     Session --> SessionService
     
     LLM --> Gemini
+    LLM --> OpenAI
+    LLM --> DeepSeek
+    LLM --> Kimi
+    LLM --> Qwen
+    LLM --> SiliconFlow
+    LLM --> Zhipu
     
     style Runner fill:#e1f5fe
     style Agent fill:#f3e5f5
@@ -77,7 +89,7 @@ graph TB
 ```
 
 **架构图说明：**
-这个整体架构图展示了 ADK-Go 的分层结构。从上到下分为应用层、核心框架层、代理类型层、存储服务层和模型层。Runner 作为核心调度器，统一管理各种代理的执行，而不同类型的代理（LLM、自定义、远程、工作流）提供了灵活的实现方式。存储服务层提供了持久化能力，模型层则抽象了与 LLM 的交互。
+这个整体架构图展示了 ADK-Go 的分层结构。从上到下分为应用层、核心框架层、代理类型层、存储服务层和模型层。Runner 作为核心调度器，统一管理各种代理的执行，而不同类型的代理（LLM、自定义、远程、工作流）提供了灵活的实现方式。存储服务层提供了持久化能力，模型层则抽象了与多种 LLM 的交互，包括 Gemini、OpenAI、DeepSeek、Kimi、Qwen、SiliconFlow 和 Zhipu 等。
 
 ## 核心组件类图
 
@@ -148,6 +160,48 @@ classDiagram
         +GenerateContent(ctx, req, stream) Iterator
     }
     
+    class Gemini {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class OpenAI {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class DeepSeek {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class Kimi {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class Qwen {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class SiliconFlow {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
+    class Zhipu {
+        -modelName string
+        +New(ctx, opts) LLM
+        +GenerateContent(ctx, req, stream) Iterator
+    }
+    
     Runner --> Agent : manages
     Runner --> Session : uses
     Agent --> InvocationContext : receives
@@ -155,6 +209,14 @@ classDiagram
     LLMAgent --> Tool : uses
     LLMAgent --> LLM : uses
     Session --> InvocationContext : provides context
+    
+    LLM <|-- Gemini : implements
+    LLM <|-- OpenAI : implements
+    LLM <|-- DeepSeek : implements
+    LLM <|-- Kimi : implements
+    LLM <|-- Qwen : implements
+    LLM <|-- SiliconFlow : implements
+    LLM <|-- Zhipu : implements
     
     class SequentialAgent {
         +New(Config) (Agent, error)
@@ -178,7 +240,7 @@ classDiagram
 ```
 
 **类图说明：**
-这个类图展示了 ADK-Go 的核心接口和类之间的关系。Agent 接口是整个框架的核心抽象，定义了代理的基本行为。Runner 负责管理代理的执行生命周期，LLMAgent 是最常用的代理实现，而工作流代理（Sequential、Parallel、Loop）提供了不同的执行模式。InvocationContext 为代理执行提供了必要的上下文信息。
+这个类图展示了 ADK-Go 的核心接口和类之间的关系。Agent 接口是整个框架的核心抽象，定义了代理的基本行为。Runner 负责管理代理的执行生命周期，LLMAgent 是最常用的代理实现，而工作流代理（Sequential、Parallel、Loop）提供了不同的执行模式。InvocationContext 为代理执行提供了必要的上下文信息。LLM 接口定义了与大语言模型交互的标准方法，支持多种实现，包括 Gemini、OpenAI、DeepSeek、Kimi、Qwen、SiliconFlow 和 Zhipu 等。
 
 ## 代理执行时序图
 
