@@ -218,11 +218,18 @@ func (m *openaiModel) generateStream(ctx context.Context, req *model.LLMRequest)
 			llmResp.TurnComplete = resp.Choices[0].FinishReason != ""
 
 			// Process through aggregator
-			for aggResp, err := range aggregator.ProcessResponse(ctx, m.convertToGenaiResponse(llmResp)) {
+			aggregatorSeq := aggregator.ProcessResponse(ctx, m.convertToGenaiResponse(llmResp))
+			done := false
+			aggregatorSeq(func(aggResp *model.LLMResponse, err error) bool {
 				if !yield(aggResp, err) {
 					yieldFailed = true
-					return io.EOF // 立即终止stream API调用
+					done = true
+					return false // 停止迭代
 				}
+				return true
+			})
+			if done {
+				return io.EOF // 立即终止stream API调用
 			}
 			return nil
 		})
