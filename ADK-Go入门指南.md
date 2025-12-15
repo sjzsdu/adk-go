@@ -51,158 +51,132 @@ cd adk-go
 
 ### 2.3 配置环境变量
 
-对于需要访问外部 LLM 服务的代理，您需要配置相应的 API 密钥。例如，对于 Gemini 模型：
+ADK-Go 需要一些环境变量来运行，特别是与 LLM 模型集成时：
 
 ```bash
-export GOOGLE_API_KEY="your-google-api-key"
+# 设置 Gemini API 密钥（如果使用 Gemini 模型）
+export GOOGLE_API_KEY="your-gemini-api-key"
+
+# 可选：设置其他环境变量
+export ADK_APP_NAME="my-adk-app"
+export ADK_LOG_LEVEL="debug"
 ```
 
-## 3. 快速入门流程图
+## 3. 第一个代理应用
 
-```mermaid
-flowchart TD
-    A[准备工作] --> B[安装Go]
-    B --> C[获取ADK-Go]
-    C --> D[配置环境变量]
-    D --> E[运行Quickstart示例]
-    E --> F{选择运行方式}
-    F -->|CLI| G[命令行运行]
-    F -->|Web| H[Web界面运行]
-    F -->|REST API| I[API运行]
-    G --> J[查看结果]
-    H --> J
-    I --> J
-```
+让我们创建一个简单的 LLM 代理应用，该代理使用 Gemini 模型来响应查询。
 
-**快速入门流程图说明**：
+### 3.1 快速入门示例
 
-这张流程图展示了使用 ADK-Go 快速入门的完整步骤。首先需要准备开发环境，安装 Go 并获取 ADK-Go，然后配置必要的环境变量。接下来可以运行 Quickstart 示例，根据需要选择不同的运行方式（CLI、Web 或 REST API），最后查看运行结果。
-
-## 4. 第一个代理应用：Quickstart 示例解析
-
-### 4.1 示例概述
-
-Quickstart 示例是一个简单的代理应用，展示了 ADK-Go 的基本功能。让我们来解析这个示例，了解其结构和工作原理。
-
-### 4.2 示例代码结构
+我们将使用 ADK-Go 提供的快速入门示例：
 
 ```bash
-examples/
-└── quickstart/
-    └── main.go  # Quickstart 示例的主文件
+cd examples/quickstart
+go run main.go
 ```
 
-### 4.3 代码解析
+### 3.2 示例代码解析
 
-让我们看看 `quickstart/main.go` 的核心代码：
+让我们分析一下快速入门示例的代码结构：
 
 ```go
 package main
 
 import (
 	"context"
-	"log"
-	"os"
+	"fmt"
 
+	"github.com/sjzsdu/adk-go/agent"
 	"github.com/sjzsdu/adk-go/agent/llmagent"
-	"github.com/sjzsdu/adk-go/cmd/launcher/full"
-	"github.com/sjzsdu/adk-go/cmd/launcher/universal"
-	"github.com/sjzsdu/adk-go/model/gemini"
+	"github.com/sjzsdu/adk-go/runner"
+	"github.com/sjzsdu/adk-go/server/rest"
 )
 
 func main() {
-	ctx := context.Background()
-
-	// 创建 Gemini 模型实例
-	model, err := gemini.New(ctx, gemini.WithModel("gemini-1.5-flash"))
+	// 创建一个简单的 LLM 代理
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "quickstart-agent",
+		Description: "A simple LLM agent",
+		Model:       "gemini-1.5-pro", // 使用 Gemini 模型
+		Instruction: "You are a helpful assistant.",
+	})
 	if err != nil {
-		log.Fatalf("failed to create model: %v", err)
+		panic(err)
 	}
 
-	// 创建 LLM 代理
-	llmAgent, err := llmagent.New(
-		llmagent.WithModel(model),
-		llmagent.WithInstruction("You are a helpful assistant."),
-	)
+	// 创建运行器
+	runner, err := runner.New(runner.Config{
+		AppName:   "quickstart-app",
+		RootAgent: llmAgent,
+	})
 	if err != nil {
-		log.Fatalf("failed to create agent: %v", err)
+		panic(err)
 	}
 
-	// 创建配置
-	config := full.NewEmptyConfig()
-	config.Agent = llmAgent
-
-	// 创建启动器并运行
-	l := full.NewLauncher()
-	err = l.ParseAndRun(ctx, config, os.Args[1:], universal.ErrorOnUnparsedArgs)
-	if err != nil {
-		log.Fatalf("run failed: %v\n\n%s", err, l.FormatSyntax())
+	// 运行 REST 服务器
+	restServer := rest.New(runner)
+	fmt.Println("Server starting on :8080...")
+	if err := restServer.Run(rest.RunConfig{Port: 8080}); err != nil {
+		panic(err)
 	}
 }
 ```
 
-### 4.4 代码解释
+### 3.3 运行方式
 
-1. **导入依赖**：导入必要的 ADK-Go 包和标准库。
-2. **创建模型实例**：初始化 Gemini 模型，指定模型名称为 "gemini-1.5-flash"。
-3. **创建 LLM 代理**：使用模型实例和指令创建一个 LLM 代理。
-4. **创建配置**：创建一个空配置，并将代理添加到配置中。
-5. **创建启动器并运行**：创建一个完整的启动器，解析命令行参数并运行应用。
+ADK-Go 支持多种运行方式：
 
-## 5. 运行方式
-
-ADK-Go 支持多种运行方式，您可以根据需要选择适合的方式。
-
-### 5.1 命令行（CLI）运行
-
-最直接的运行方式是通过命令行：
+#### 3.3.1 命令行接口 (CLI)
 
 ```bash
-go run ./examples/quickstart/main.go console
+# 运行 CLI 示例
+cd examples/cli
+go run main.go
 ```
 
-运行后，您可以直接在命令行中与代理交互：
-
-```
-> Hello, ADK-Go!
-I'm here to help you with any questions or tasks you have. What would you like to know or do today?
-```
-
-### 5.2 Web 界面运行
-
-您可以通过 Web 界面与代理交互：
+#### 3.3.2 REST API
 
 ```bash
-go run ./examples/quickstart/main.go webui
+# 运行 REST API 示例
+cd examples/rest
+go run main.go
 ```
 
-然后在浏览器中访问 `http://localhost:8080`，即可看到 Web 界面。
-
-### 5.3 REST API 运行
-
-ADK-Go 还支持通过 REST API 访问代理：
+然后可以通过 HTTP 请求与代理交互：
 
 ```bash
-go run ./examples/quickstart/main.go restapi
+curl -X POST http://localhost:8080/v1/run \n  -H "Content-Type: application/json" \n  -d '{"user_id": "test-user", "session_id": "test-session", "content": "Hello, ADK-Go!"}'
 ```
 
-API 将在 `http://localhost:8080/api/rest` 上运行，您可以使用 curl 或其他 HTTP 客户端访问：
+#### 3.3.3 直接调用
 
-```bash
-curl -X POST http://localhost:8080/api/rest/v1/agents/run \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": "test-user", "message": "Hello, ADK-Go!"}'
+在自己的 Go 代码中直接调用代理：
+
+```go
+// 创建代理
+agent, err := llmagent.New(llmagent.Config{
+	Name:        "my-agent",
+	Description: "A simple agent",
+	Model:       "gemini-1.5-pro",
+	Instruction: "You are a helpful assistant.",
+})
+
+// 创建上下文
+ctx := context.Background()
+
+// 运行代理
+for event, err := range agent.Run(ctx) {
+	// 处理事件
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Agent response:", event.Content)
+}
 ```
 
-### 5.4 A2A（Agent-to-Agent）运行
+## 4. 项目结构
 
-A2A 允许代理之间进行通信：
-
-```bash
-go run ./examples/quickstart/main.go a2a
-```
-
-## 6. 项目目录结构示意图
+ADK-Go 采用模块化设计，项目结构清晰：
 
 ```mermaid
 graph TD
@@ -254,78 +228,79 @@ graph TD
         end
         
         subgraph "tool/"
-            functiontool[functiontool/ - 函数工具]
-            agenttool[agenttool/ - 代理工具]
-            geminitool[geminitool/ - Gemini工具]
+            builtintools[builtintools/ - 内置工具]
+            customtools[customtools/ - 自定义工具示例]
         end
     end
 ```
 
-**项目目录结构说明**：
+## 5. 常见问题和解决方案
 
-ADK-Go 采用模块化设计，项目目录结构清晰。核心功能分布在不同的包中：
+### 5.1 连接 LLM 模型失败
 
-- **agent/**：包含代理框架和各种类型的代理实现
-- **artifact/**：提供制品存储服务，用于管理代理产生的数据
-- **cmd/**：包含命令行工具和启动器
-- **examples/**：提供各种示例代码，帮助开发者学习和理解框架
-- **internal/**：包含内部使用的包，不对外暴露
-- **memory/**：提供内存服务，用于代理的短期和长期记忆
-- **model/**：包含与各种 LLM 模型的集成
-- **runner/**：负责代理的运行和管理
-- **server/**：提供 Web 服务器和 API 支持
-- **session/**：管理代理会话
-- **tool/**：包含工具系统和各种工具实现
-- **util/**：提供通用工具函数
-
-## 7. 常见问题和解决方案
-
-### 7.1 问题：运行示例时出现 "API key not found" 错误
+**问题**：运行代理时出现 "failed to connect to LLM model" 错误
 
 **解决方案**：
 
-确保已正确设置 GOOGLE_API_KEY 环境变量：
+1. 检查 API 密钥是否正确设置
 
-```bash
-export GOOGLE_API_KEY="your-google-api-key"
+2. 确保网络连接正常
+
+3. 检查模型名称是否正确
+
+### 5.2 端口被占用
+
+**问题**：运行 REST 服务器时出现 "address already in use" 错误
+
+**解决方案**：
+
+1. 更改端口号：`rest.RunConfig{Port: 8081}`
+
+2. 查找并杀死占用端口的进程：`lsof -i :8080 | grep LISTEN` 然后 `kill <PID>`
+
+### 5.3 依赖项问题
+
+**问题**：运行 `go run` 时出现依赖项错误
+
+**解决方案**：
+
+1. 运行 `go mod tidy` 来更新依赖项
+
+2. 检查 Go 版本是否符合要求
+
+3. 确保所有依赖项都已正确安装
+
+## 6. 下一步学习
+
+现在您已经完成了 ADK-Go 的入门学习，可以继续深入了解：
+
+1. **核心概念详解**：深入理解 ADK-Go 的核心概念和组件
+
+2. **架构设计文档**：了解 ADK-Go 的架构设计和各组件之间的关系
+
+3. **开发指南**：学习如何开发更复杂的代理应用
+
+4. **示例库详解**：查看更多示例，了解各种使用场景
+
+5. **API 参考**：查阅详细的 API 文档，了解所有可用的接口和方法
+
+## 7. 快速入门流程图
+
+```mermaid
+flowchart TD
+    A[开始] --> B[安装 Go 环境]
+    B --> C[获取 ADK-Go 代码]
+    C --> D[设置环境变量]
+    D --> E[运行快速入门示例]
+    E --> F{运行成功?}
+    F -->|是| G[查看输出结果]
+    F -->|否| H[检查错误信息]
+    H --> I[解决问题]
+    I --> E
+    G --> J[了解示例代码]
+    J --> K[尝试修改代码]
+    K --> L[运行修改后的代码]
+    L --> M[结束]
 ```
 
-### 7.2 问题：运行示例时出现 "model not found" 错误
-
-**解决方案**：
-
-检查模型名称是否正确，确保使用的模型名称在您的 API 密钥权限范围内。
-
-### 7.3 问题：Web 界面无法访问
-
-**解决方案**：
-
-1. 检查端口是否被占用
-2. 检查防火墙设置
-3. 尝试使用不同的浏览器
-
-### 7.4 问题：API 调用返回错误
-
-**解决方案**：
-
-1. 检查请求格式是否正确
-2. 检查请求参数是否完整
-3. 查看日志获取详细错误信息
-
-## 8. 下一步
-
-现在您已经完成了 ADK-Go 的快速入门，了解了基本概念和使用方法。接下来，您可以：
-
-1. 阅读 [ADK-Go 核心概念详解](ADK-Go核心概念详解.md)，深入理解框架的核心概念
-2. 查看 [ADK-Go 架构设计文档](ADK-Go架构分析文档.md)，了解框架的架构设计
-3. 尝试运行其他示例，如 REST API 示例、工作流代理示例等
-4. 开始开发自己的代理应用
-
-## 9. 资源链接
-
-- [ADK-Go GitHub 仓库](https://github.com/sjzsdu/adk-go)
-- [ADK-Go 官方文档](https://google.github.io/adk-docs/)
-- [ADK 示例仓库](https://github.com/google/adk-samples)
-- [Gemini API 文档](https://ai.google.dev/docs)
-
-祝您使用 ADK-Go 开发出优秀的 AI 代理应用！
+通过本入门指南，您已经成功安装并运行了第一个 ADK-Go 代理应用。接下来，您可以深入学习 ADK-Go 的核心概念和架构设计，开发更复杂的代理应用。
