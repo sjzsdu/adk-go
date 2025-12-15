@@ -2,412 +2,1049 @@
 
 ## 1. 概述
 
-ADK-Go 提供了丰富的示例，展示了框架的各种功能和使用场景。本文档将详细解析这些示例，帮助开发者理解不同使用场景的实现方式和最佳实践。
+ADK-Go 示例库包含了一系列示例应用，用于展示 ADK-Go 框架的各种功能和使用场景。这些示例通常设计得比较简洁，专注于演示一个或几个特定的功能点。与 [google/adk-samples](https://github.com/google/adk-samples) 仓库中的复杂端到端示例不同，本示例库中的示例更加轻量级，适合用于学习和测试。
 
-## 2. 快速入门示例 (quickstart)
+### 1.1 示例库结构
 
-### 2.1 示例概述
-
-快速入门示例是一个简单的 LLM 代理应用，展示了 ADK-Go 的基本功能，是学习 ADK-Go 的起点。
-
-### 2.2 代码结构
-
-```bash
-examples/quickstart/
-└── main.go  # 主程序文件
+```
+examples/
+├── a2a/                  # A2A 代理示例
+├── mcp/                  # MCP 示例
+├── quickstart/           # 快速入门示例
+├── rest/                 # REST API 示例
+├── tools/                # 工具示例
+│   ├── loadartifacts/    # 加载制品示例
+│   └── multipletools/    # 多工具示例
+├── vertexai/             # Vertex AI 示例
+│   └── imagegenerator/   # 图像生成器示例
+├── web/                  # Web UI 示例
+│   ├── agents/           # Web 代理定义
+│   └── web.md            # Web 示例说明
+├── workflowagents/       # 工作流代理示例
+│   ├── loop/             # 循环代理示例
+│   ├── parallel/         # 并行代理示例
+│   ├── sequential/       # 顺序代理示例
+│   └── sequentialCode/   # 顺序代码代理示例
+├── EXAMPLE.md            # 示例模板
+└── README.md             # 示例库说明
 ```
 
-### 2.3 核心代码解析
+### 1.2 启动器使用说明
+
+许多示例中都使用了 ADK-Go 的启动器（Launcher），它允许您选择不同的运行方式：
 
 ```go
-// 创建 Gemini 模型
-model, err := gemini.New(ctx, gemini.WithModel("gemini-1.5-flash"))
-if err != nil {
-    log.Fatalf("failed to create model: %v", err)
-}
-
-// 创建 LLM 代理
-llmAgent, err := llmagent.New(
-    llmagent.WithModel(model),
-    llmagent.WithInstruction("You are a helpful assistant."),
-)
-if err != nil {
-    log.Fatalf("failed to create agent: %v", err)
-}
-```
-
-### 2.4 运行方式
-
-```bash
-export GOOGLE_API_KEY="your-api-key"
-go run ./examples/quickstart/main.go console
-```
-
-### 2.5 关键功能
-
-- 基本 LLM 代理创建
-- Gemini 模型集成
-- 多种运行模式支持（console、webui、restapi、a2a）
-
-## 3. REST API 示例 (rest)
-
-### 3.1 示例概述
-
-REST API 示例展示了如何使用 ADK-Go 创建一个基于 REST API 的代理服务，允许客户端通过 HTTP 请求与代理交互。
-
-### 3.2 代码结构
-
-```bash
-examples/rest/
-└── main.go  # 主程序文件
-```
-
-### 3.3 核心代码解析
-
-```go
-// 创建代理配置
-config := full.NewEmptyConfig()
-config.Agent = llmAgent
-
-// 创建 REST API 启动器
 l := full.NewLauncher()
-
-// 解析并运行
-if err := l.ParseAndRun(ctx, config, []string{"restapi"}, universal.ErrorOnUnparsedArgs); err != nil {
+err = l.ParseAndRun(ctx, config, os.Args[1:], universal.ErrorOnUnparsedArgs)
+if err != nil {
     log.Fatalf("run failed: %v\n\n%s", err, l.FormatSyntax())
 }
 ```
 
-### 3.4 运行方式
+`full.NewLauncher()` 包含了所有主要的运行方式：
+- `console`：命令行方式
+- `restapi`：REST API 方式
+- `a2a`：A2A 代理方式
+- `webui`：Web UI 方式（可以独立运行，也可以与 restapi 或 a2a 一起运行）
+
+您也可以使用 `prod.NewLauncher()`，它只包含 restapi 和 a2a 启动器，适合生产环境使用。
+
+运行 `go run ./example/quickstart/main.go help` 可以查看详细的使用说明。
+
+## 2. 快速入门示例 (quickstart/)
+
+### 2.1 示例目的
+
+快速入门示例是一个简单的 LLM 代理应用，用于演示 ADK-Go 框架的基本使用方法。
+
+### 2.2 示例代码
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create a simple LLM agent
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "quickstart",
+		Description: "A simple LLM agent",
+		Model:       "gemini-1.5-flash",
+		Instruction: "You are a helpful assistant.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create LLM agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "quickstart-app",
+		RootAgent: llmAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+### 2.3 运行说明
 
 ```bash
-export GOOGLE_API_KEY="your-api-key"
+# 运行命令行版本
+go run ./examples/quickstart/main.go console
+
+# 运行 REST API 版本
+go run ./examples/quickstart/main.go restapi
+
+# 运行 Web UI 版本
+go run ./examples/quickstart/main.go webui
+
+# 查看帮助信息
+go run ./examples/quickstart/main.go help
+```
+
+### 2.4 使用场景
+
+- 了解 ADK-Go 框架的基本结构
+- 学习如何创建简单的 LLM 代理
+- 体验不同的运行方式
+
+## 3. REST API 示例 (rest/)
+
+### 3.1 示例目的
+
+REST API 示例演示了如何使用 ADK-Go 框架创建一个 REST API 服务，允许客户端通过 HTTP 请求与代理交互。
+
+### 3.2 示例代码
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/server/rest"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create LLM agent
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "rest-agent",
+		Description: "A simple LLM agent for REST API",
+		Model:       "gemini-1.5-flash",
+		Instruction: "You are a helpful assistant.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create LLM agent: %v", err)
+	}
+
+	// Create runner
+	runner, err := runner.New(runner.Config{
+		AppName:   "rest-app",
+		RootAgent: llmAgent,
+	})
+	if err != nil {
+		log.Fatalf("Failed to create runner: %v", err)
+	}
+
+	// Create REST server
+	restServer := rest.New(runner)
+
+	// Run server
+	log.Println("Starting REST server on :8080...")
+	if err := restServer.Run(rest.RunConfig{
+		Port: 8080,
+	}); err != nil {
+		log.Fatalf("Failed to run REST server: %v", err)
+	}
+}
+```
+
+### 3.3 运行说明
+
+```bash
 go run ./examples/rest/main.go
 ```
 
-### 3.5 关键功能
-
-- REST API 服务创建
-- HTTP 请求处理
-- JSON 响应格式化
-
-## 4. 工作流代理示例 (workflowagents)
-
-### 4.1 顺序代理示例 (sequential)
-
-#### 4.1.1 示例概述
-
-顺序代理示例展示了如何使用顺序代理编排多个子代理，按顺序执行任务。
-
-#### 4.1.2 代码结构
+然后可以使用 curl 或其他 HTTP 客户端与 REST API 交互：
 
 ```bash
-examples/workflowagents/sequential/
-└── main.go  # 主程序文件
+curl -X POST http://localhost:8080/v1/run \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "test-user", "session_id": "test-session", "content": "Hello, ADK-Go!"}'
 ```
 
-#### 4.1.3 核心代码解析
+### 3.4 使用场景
+
+- 学习如何创建 REST API 服务
+- 了解如何与其他系统集成
+- 构建基于 HTTP 的代理服务
+
+## 4. A2A 代理示例 (a2a/)
+
+### 4.1 示例目的
+
+A2A 代理示例演示了如何使用 ADK-Go 框架创建一个 A2A（Agent-to-Agent）代理，允许代理与远程代理通信。
+
+### 4.2 示例代码
 
 ```go
-// 创建子代理
-agent1, _ := llmagent.New(llmagent.WithModel(model), llmagent.WithInstruction("Summarize this: %s"))
-agent2, _ := llmagent.New(llmagent.WithModel(model), llmagent.WithInstruction("Translate to French: %s"))
+package main
 
-// 创建顺序代理
-sequentialAgent, _ := sequentialagent.New(sequentialagent.WithAgents(agent1, agent2))
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/remoteagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create a remote A2A agent
+	remoteAgent, err := remoteagent.NewA2A(remoteagent.A2AConfig{
+		Name:        "a2a-agent",
+		Description: "A remote A2A agent",
+		AgentCardSource: "https://example.com/agent-card.json", // Replace with actual agent card source
+	})
+	if err != nil {
+		log.Fatalf("Failed to create remote A2A agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "a2a-app",
+		RootAgent: remoteAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
 ```
 
-#### 4.1.4 运行方式
+### 4.3 运行说明
 
 ```bash
-export GOOGLE_API_KEY="your-api-key"
+# 运行 A2A 代理
+go run ./examples/a2a/main.go a2a
+
+# 查看帮助信息
+go run ./examples/a2a/main.go help
+```
+
+### 4.4 使用场景
+
+- 学习如何创建远程 A2A 代理
+- 了解 A2A 协议的使用
+- 构建分布式代理系统
+
+## 5. Web UI 示例 (web/)
+
+### 5.1 示例目的
+
+Web UI 示例演示了如何使用 ADK-Go 框架创建一个带有 Web 界面的代理应用。
+
+### 5.2 示例结构
+
+```
+web/
+├── agents/           # Web 代理定义
+│   ├── image_generator.go   # 图像生成器代理
+│   └── llmauditor.go        # LLM 审核器代理
+├── main.go           # 主程序
+└── web.md            # Web 示例说明
+```
+
+### 5.3 示例代码
+
+主程序代码：
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/examples/web/agents"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create image generator agent
+	imageGenAgent, err := agents.NewImageGenerator()
+	if err != nil {
+		log.Fatalf("Failed to create image generator agent: %v", err)
+	}
+
+	// Create LLM auditor agent
+	auditorAgent, err := agents.NewLLMAuditor()
+	if err != nil {
+		log.Fatalf("Failed to create LLM auditor agent: %v", err)
+	}
+
+	// Create a runner with both agents
+	runnerCfg := runner.Config{
+		AppName:   "web-app",
+		RootAgent: imageGenAgent, // Set image generator as root agent
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+### 5.4 运行说明
+
+```bash
+# 运行 Web UI
+go run ./examples/web/main.go webui
+
+# 同时运行 Web UI 和 REST API
+go run ./examples/web/main.go webui restapi
+
+# 查看帮助信息
+go run ./examples/web/main.go help
+```
+
+### 5.5 使用场景
+
+- 学习如何创建带有 Web 界面的代理应用
+- 了解如何集成多个代理
+- 构建可视化的代理服务
+
+## 6. 工作流代理示例 (workflowagents/)
+
+### 6.1 顺序代理示例 (sequential/)
+
+#### 6.1.1 示例目的
+
+顺序代理示例演示了如何使用 ADK-Go 框架创建一个顺序代理，按顺序执行其子代理。
+
+#### 6.1.2 示例代码
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent"
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/agent/workflowagents/sequentialagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create first agent
+	agent1, err := llmagent.New(llmagent.Config{
+		Name:        "agent-1",
+		Description: "First agent",
+		Model:       "gemini-1.5-flash",
+		Instruction: "You are the first agent. Greet the user.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create agent 1: %v", err)
+	}
+
+	// Create second agent
+	agent2, err := llmagent.New(llmagent.Config{
+		Name:        "agent-2",
+		Description: "Second agent",
+		Model:       "gemini-1.5-flash",
+		Instruction: "You are the second agent. Ask the user what they want to do.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create agent 2: %v", err)
+	}
+
+	// Create third agent
+	agent3, err := llmagent.New(llmagent.Config{
+		Name:        "agent-3",
+		Description: "Third agent",
+		Model:       "gemini-1.5-flash",
+		Instruction: "You are the third agent. Summarize the conversation.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create agent 3: %v", err)
+	}
+
+	// Create sequential agent
+	seqAgent, err := sequentialagent.New(sequentialagent.Config{
+		AgentConfig: agent.Config{
+			Name:        "sequential-agent",
+			Description: "A sequential workflow agent",
+			SubAgents:   []agent.Agent{agent1, agent2, agent3},
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create sequential agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "sequential-app",
+		RootAgent: seqAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+#### 6.1.3 运行说明
+
+```bash
+# 运行顺序代理
 go run ./examples/workflowagents/sequential/main.go console
+
+# 查看帮助信息
+go run ./examples/workflowagents/sequential/main.go help
 ```
 
-### 4.2 并行代理示例 (parallel)
+#### 6.1.4 使用场景
 
-#### 4.2.1 示例概述
+- 学习如何创建顺序代理
+- 了解工作流代理的基本概念
+- 构建按顺序执行的工作流
 
-并行代理示例展示了如何使用并行代理同时执行多个子代理，提高处理效率。
+### 6.2 并行代理示例 (parallel/)
 
-#### 4.2.2 核心代码解析
+#### 6.2.1 示例目的
+
+并行代理示例演示了如何使用 ADK-Go 框架创建一个并行代理，并行执行其子代理。
+
+#### 6.2.2 示例代码
 
 ```go
-// 创建并行代理
-parallelAgent, _ := parallelagent.New(
-    parallelagent.WithAgents(agent1, agent2, agent3),
-)
-```
+package main
 
-### 4.3 循环代理示例 (loop)
+import (
+	"context"
+	"log"
+	"os"
 
-#### 4.3.1 示例概述
-
-循环代理示例展示了如何使用循环代理重复执行子代理，直到满足退出条件。
-
-#### 4.3.2 核心代码解析
-
-```go
-// 创建循环代理
-loopAgent, _ := loopagent.New(
-    loopagent.WithAgent(agent1),
-    loopagent.WithMaxIterations(5),
-)
-```
-
-## 5. 工具使用示例 (tools)
-
-### 5.1 加载制品工具示例 (loadartifacts)
-
-#### 5.1.1 示例概述
-
-加载制品工具示例展示了如何使用加载制品工具从制品存储中加载文件。
-
-#### 5.1.2 代码结构
-
-```bash
-examples/tools/loadartifacts/
-├── animal_picture.png  # 示例图片文件
-└── main.go  # 主程序文件
-```
-
-#### 5.1.3 核心代码解析
-
-```go
-// 创建加载制品工具
-loadArtifactsTool := loadartifactstool.New()
-
-// 创建带工具的代理
-llmAgent, _ := llmagent.New(
-    llmagent.WithModel(model),
-    llmagent.WithTools(loadArtifactsTool),
-)
-```
-
-### 5.2 多种工具示例 (multipletools)
-
-#### 5.2.1 示例概述
-
-多种工具示例展示了如何在一个代理中使用多种工具，扩展代理的能力。
-
-#### 5.2.2 核心代码解析
-
-```go
-// 创建多个工具
-funcTool := functiontool.New("square", "Calculate square of a number", func(_ context.Context, input map[string]any) (any, error) {
-    num := input["number"].(float64)
-    return map[string]any{"result": num * num}, nil
-})
-
-// 创建带多个工具的代理
-llmAgent, _ := llmagent.New(
-    llmagent.WithModel(model),
-    llmagent.WithTools(funcTool, loadArtifactsTool),
-)
-```
-
-## 6. A2A 代理示例 (a2a)
-
-### 6.1 示例概述
-
-A2A（Agent-to-Agent）代理示例展示了如何创建一个能够与远程代理通信的代理，支持分布式代理系统。
-
-### 6.2 代码结构
-
-```bash
-examples/a2a/
-└── main.go  # 主程序文件
-```
-
-### 6.3 核心代码解析
-
-```go
-// 创建 A2A 代理
-remoteAgent, _ := remoteagent.NewA2AAgent(
-    remoteagent.WithURL("http://localhost:8080/a2a"),
-    remoteagent.WithAppName("remote-app"),
+	"github.com/sjzsdu/adk-go/agent"
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/agent/workflowagents/parallelagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
 )
 
-// 使用 A2A 代理作为工具
-agentTool := agenttool.New(remoteAgent)
-```
+func main() {
+	ctx := context.Background()
 
-### 6.4 运行方式
+	// Create multiple agents
+	agents := make([]agent.Agent, 3)
+	for i := 0; i < 3; i++ {
+		agent, err := llmagent.New(llmagent.Config{
+			Name:        fmt.Sprintf("agent-%d", i+1),
+			Description: fmt.Sprintf("Agent %d", i+1),
+			Model:       "gemini-1.5-flash",
+			Instruction: fmt.Sprintf("You are agent %d. Provide a unique perspective on the user's query.", i+1),
+		})
+		if err != nil {
+			log.Fatalf("Failed to create agent %d: %v", i+1, err)
+		}
+		agents[i] = agent
+	}
 
-```bash
-export GOOGLE_API_KEY="your-api-key"
-go run ./examples/a2a/main.go
-```
+	// Create parallel agent
+	parallelAgent, err := parallelagent.New(parallelagent.Config{
+		AgentConfig: agent.Config{
+			Name:        "parallel-agent",
+			Description: "A parallel workflow agent",
+			SubAgents:   agents,
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create parallel agent: %v", err)
+	}
 
-## 7. Web 应用示例 (web)
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "parallel-app",
+		RootAgent: parallelAgent,
+	}
 
-### 7.1 示例概述
-
-Web 应用示例展示了如何创建一个基于 Web UI 的代理应用，允许用户通过浏览器与代理交互。
-
-### 7.2 代码结构
-
-```bash
-examples/web/
-├── agents/          # 代理实现
-│   ├── image_generator.go  # 图像生成代理
-│   └── llmauditor.go       # LLM 审计代理
-├── main.go          # 主程序文件
-└── web.md           # Web 示例说明
-```
-
-### 7.3 核心代码解析
-
-```go
-// 创建 Web 启动器
-l := full.NewLauncher()
-
-// 解析并运行 Web UI
-if err := l.ParseAndRun(ctx, config, []string{"webui"}, universal.ErrorOnUnparsedArgs); err != nil {
-    log.Fatalf("run failed: %v\n\n%s", err, l.FormatSyntax())
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
 }
 ```
 
-### 7.4 运行方式
+#### 6.2.3 运行说明
 
 ```bash
-export GOOGLE_API_KEY="your-api-key"
-go run ./examples/web/main.go
+# 运行并行代理
+go run ./examples/workflowagents/parallel/main.go console
+
+# 查看帮助信息
+go run ./examples/workflowagents/parallel/main.go help
 ```
 
-### 7.5 关键功能
+#### 6.2.4 使用场景
 
-- Web UI 集成
-- 多代理管理
-- 图像生成功能
-- 实时交互
+- 学习如何创建并行代理
+- 了解并行执行的工作流
+- 构建需要多个视角的工作流
 
-## 8. Vertex AI 示例 (vertexai/imagegenerator)
+### 6.3 循环代理示例 (loop/)
 
-### 8.1 示例概述
+#### 6.3.1 示例目的
 
-Vertex AI 示例展示了如何使用 Vertex AI 服务创建一个图像生成代理。
+循环代理示例演示了如何使用 ADK-Go 框架创建一个循环代理，循环执行其子代理。
 
-### 8.2 代码结构
-
-```go
-examples/vertexai/imagegenerator/
-└── main.go  # 主程序文件
-```
-
-### 8.3 核心代码解析
+#### 6.3.2 示例代码
 
 ```go
-// 创建 Vertex AI 模型
-model, _ := gemini.New(ctx, 
-    gemini.WithModel("gemini-1.5-flash"),
-    gemini.WithVertexAIProject("your-project"),
-    gemini.WithVertexAILocation("us-central1"),
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent"
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/agent/workflowagents/loopagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
 )
+
+func main() {
+	ctx := context.Background()
+
+	// Create a code refinement agent
+	codeAgent, err := llmagent.New(llmagent.Config{
+		Name:        "code-refiner",
+		Description: "Code refinement agent",
+		Model:       "gemini-1.5-pro",
+		Instruction: "You are a code refinement agent. Improve the provided code based on the feedback.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create code agent: %v", err)
+	}
+
+	// Create loop agent with max iterations
+	loopAgent, err := loopagent.New(loopagent.Config{
+		AgentConfig: agent.Config{
+			Name:        "loop-agent",
+			Description: "A loop workflow agent for code refinement",
+			SubAgents:   []agent.Agent{codeAgent},
+		},
+		MaxIterations: 5, // Max 5 iterations
+	})
+	if err != nil {
+		log.Fatalf("Failed to create loop agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "loop-app",
+		RootAgent: loopAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
 ```
 
-## 9. 代码实现的顺序代理示例 (sequentialCode)
+#### 6.3.3 运行说明
 
-### 9.1 示例概述
+```bash
+# 运行循环代理
+go run ./examples/workflowagents/loop/main.go console
 
-该示例展示了如何使用代码实现顺序代理，而不是通过配置方式。
+# 查看帮助信息
+go run ./examples/workflowagents/loop/main.go help
+```
 
-### 9.2 代码结构
+#### 6.3.4 使用场景
+
+- 学习如何创建循环代理
+- 了解循环执行的工作流
+- 构建需要迭代优化的工作流，如代码修改
+
+### 6.4 顺序代码代理示例 (sequentialCode/)
+
+#### 6.4.1 示例目的
+
+顺序代码代理示例演示了如何使用 ADK-Go 框架创建一个顺序代码代理，按顺序执行代码逻辑。
+
+#### 6.4.2 示例代码
 
 ```go
-examples/workflowagents/sequentialCode/
-└── main.go  # 主程序文件
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent"
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/agent/workflowagents/sequentialagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create code agent 1
+	codeAgent1, err := agent.New(agent.Config{
+		Name:        "code-agent-1",
+		Description: "First code agent",
+		Run: func(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
+			return func(yield func(*session.Event, error) bool) {
+				event := session.NewEvent(ctx.InvocationID())
+				event.Content = genai.NewContentFromText("Running code agent 1")
+				event.Author = ctx.Agent().Name()
+				yield(event, nil)
+			}
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create code agent 1: %v", err)
+	}
+
+	// Create code agent 2
+	codeAgent2, err := agent.New(agent.Config{
+		Name:        "code-agent-2",
+		Description: "Second code agent",
+		Run: func(ctx agent.InvocationContext) iter.Seq2[*session.Event, error] {
+			return func(yield func(*session.Event, error) bool) {
+				event := session.NewEvent(ctx.InvocationID())
+				event.Content = genai.NewContentFromText("Running code agent 2")
+				event.Author = ctx.Agent().Name()
+				yield(event, nil)
+			}
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create code agent 2: %v", err)
+	}
+
+	// Create sequential code agent
+	seqCodeAgent, err := sequentialagent.New(sequentialagent.Config{
+		AgentConfig: agent.Config{
+			Name:        "sequential-code-agent",
+			Description: "A sequential code workflow agent",
+			SubAgents:   []agent.Agent{codeAgent1, codeAgent2},
+		},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create sequential code agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "sequential-code-app",
+		RootAgent: seqCodeAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
 ```
 
-### 9.3 核心代码解析
+#### 6.4.3 运行说明
+
+```bash
+# 运行顺序代码代理
+go run ./examples/workflowagents/sequentialCode/main.go console
+
+# 查看帮助信息
+go run ./examples/workflowagents/sequentialCode/main.go help
+```
+
+#### 6.4.4 使用场景
+
+- 学习如何创建顺序代码代理
+- 了解如何在工作流中执行代码逻辑
+- 构建需要按顺序执行代码的工作流
+
+## 7. 工具示例 (tools/)
+
+### 7.1 加载制品示例 (loadartifacts/)
+
+#### 7.1.1 示例目的
+
+加载制品示例演示了如何使用 ADK-Go 框架创建一个代理，加载和使用制品。
+
+#### 7.1.2 示例代码
 
 ```go
-// 代码实现的顺序代理
-sequentialAgent := &SequentialCodeAgent{
-    agents: []agent.Agent{agent1, agent2},
-}
+package main
 
-// 自定义顺序代理实现
-func (a *SequentialCodeAgent) Run(ctx context.Context, ic agent.InvocationContext) iterator.Iterator[*event.Event] {
-    // 顺序执行子代理
-    for _, subAgent := range a.agents {
-        // 执行子代理
-        // 处理结果
-    }
-    // 返回结果
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+	"github.com/sjzsdu/adk-go/tool"
+	"github.com/sjzsdu/adk-go/tool/builtintools"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create load artifacts tool
+	loadArtifactsTool, err := builtintools.NewLoadArtifacts()
+	if err != nil {
+		log.Fatalf("Failed to create load artifacts tool: %v", err)
+	}
+
+	// Create LLM agent with load artifacts tool
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "load-artifacts-agent",
+		Description: "Agent that can load artifacts",
+		Model:       "gemini-1.5-pro",
+		Instruction: "You are an agent that can load and analyze artifacts.",
+		Tools:       []tool.Tool{loadArtifactsTool},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create LLM agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "load-artifacts-app",
+		RootAgent: llmAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
 }
 ```
 
-## 10. 示例架构图
+#### 7.1.3 运行说明
 
-```mermaid
-graph TD
-    subgraph "示例类型"
-        Quickstart[快速入门示例]
-        REST[REST API示例]
-        Workflow[工作流代理示例]
-        Tools[工具使用示例]
-        A2A[A2A代理示例]
-        Web[Web应用示例]
-        VertexAI[VertexAI示例]
-    end
-    
-    subgraph "工作流代理示例"
-        Sequential[顺序代理]
-        Parallel[并行代理]
-        Loop[循环代理]
-        SequentialCode[代码顺序代理]
-    end
-    
-    subgraph "工具使用示例"
-        LoadArtifacts[加载制品工具]
-        MultipleTools[多种工具]
-    end
-    
-    Quickstart --> ADKCore[ADK-Go核心]
-    REST --> ADKCore
-    Workflow --> ADKCore
-    Tools --> ADKCore
-    A2A --> ADKCore
-    Web --> ADKCore
-    VertexAI --> ADKCore
-    
-    Workflow --> Sequential
-    Workflow --> Parallel
-    Workflow --> Loop
-    Workflow --> SequentialCode
-    
-    Tools --> LoadArtifacts
-    Tools --> MultipleTools
-    
-    style Quickstart fill:#e1f5fe
-    style REST fill:#e1f5fe
-    style Workflow fill:#e1f5fe
-    style Tools fill:#e1f5fe
-    style A2A fill:#e1f5fe
-    style Web fill:#e1f5fe
-    style VertexAI fill:#e1f5fe
-    style ADKCore fill:#f3e5f5
+```bash
+# 运行加载制品代理
+go run ./examples/tools/loadartifacts/main.go console
+
+# 查看帮助信息
+go run ./examples/tools/loadartifacts/main.go help
 ```
 
-**示例架构图说明**：
+#### 7.1.4 使用场景
 
-这张图展示了 ADK-Go 示例的分类和关系。所有示例都基于 ADK-Go 核心框架构建，分为多个类别，包括快速入门、REST API、工作流代理、工具使用、A2A 代理、Web 应用和 VertexAI 示例。工作流代理示例进一步细分为顺序代理、并行代理、循环代理和代码实现的顺序代理。工具使用示例细分为加载制品工具和多种工具示例。
+- 学习如何创建和使用加载制品工具
+- 了解制品服务的基本概念
+- 构建需要处理制品的代理
 
-## 11. 示例使用最佳实践
+### 7.2 多工具示例 (multipletools/)
 
-1. **从简单到复杂**：从快速入门示例开始，逐步学习更复杂的示例
-2. **运行示例**：实际运行示例，观察其行为和输出
-3. **修改示例**：修改示例代码，测试不同配置和功能
-4. **组合示例**：将多个示例的功能组合起来，创建更复杂的代理应用
-5. **阅读文档**：结合示例代码阅读框架文档，加深理解
-6. **调试技巧**：使用日志和调试工具分析示例运行过程
+#### 7.2.1 示例目的
 
-## 12. 下一步
+多工具示例演示了如何使用 ADK-Go 框架创建一个代理，使用多个工具。
 
-- 运行示例，观察其行为和输出
-- 修改示例代码，测试不同配置和功能
-- 结合 [ADK-Go 开发指南](./ADK-Go开发指南.md) 开发自己的代理应用
-- 探索 [ADK-Go 架构分析文档](./ADK-Go架构分析文档.md)，深入理解框架设计
+#### 7.2.2 示例代码
 
-通过学习和使用这些示例，您将能够快速掌握 ADK-Go 框架的各种功能和使用场景，开发出强大的 AI 代理应用。
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+	"github.com/sjzsdu/adk-go/tool"
+	"github.com/sjzsdu/adk-go/tool/builtintools"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create multiple tools
+	calculatorTool := builtintools.NewCalculator()
+	httpTool := builtintools.NewHTTP()
+	fileSystemTool := builtintools.NewFileSystem(".")
+
+	// Create LLM agent with multiple tools
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "multiple-tools-agent",
+		Description: "Agent with multiple tools",
+		Model:       "gemini-1.5-pro",
+		Instruction: "You are an agent with multiple tools. Use the appropriate tool for each task.",
+		Tools:       []tool.Tool{calculatorTool, httpTool, fileSystemTool},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create LLM agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "multiple-tools-app",
+		RootAgent: llmAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+#### 7.2.3 运行说明
+
+```bash
+# 运行多工具代理
+go run ./examples/tools/multipletools/main.go console
+
+# 查看帮助信息
+go run ./examples/tools/multipletools/main.go help
+```
+
+#### 7.2.4 使用场景
+
+- 学习如何创建和使用多个工具
+- 了解工具系统的基本概念
+- 构建需要多种工具的代理
+
+## 8. Vertex AI 示例 (vertexai/)
+
+### 8.1 图像生成器示例 (imagegenerator/)
+
+#### 8.1.1 示例目的
+
+图像生成器示例演示了如何使用 ADK-Go 框架创建一个代理，使用 Vertex AI 进行图像生成。
+
+#### 8.1.2 示例代码
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+	"github.com/sjzsdu/adk-go/tool"
+	"github.com/sjzsdu/adk-go/tool/builtintools"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create Vertex AI image generator tool
+	imageGeneratorTool, err := builtintools.NewVertexAIImageGenerator()
+	if err != nil {
+		log.Fatalf("Failed to create Vertex AI image generator tool: %v", err)
+	}
+
+	// Create LLM agent with image generator tool
+	llmAgent, err := llmagent.New(llmagent.Config{
+		Name:        "image-generator-agent",
+		Description: "Agent that can generate images using Vertex AI",
+		Model:       "gemini-1.5-pro",
+		Instruction: "You are an agent that can generate images using Vertex AI. Use the image generator tool to generate images based on user requests.",
+		Tools:       []tool.Tool{imageGeneratorTool},
+	})
+	if err != nil {
+		log.Fatalf("Failed to create LLM agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "image-generator-app",
+		RootAgent: llmAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+#### 8.1.3 运行说明
+
+```bash
+# 运行图像生成器代理
+go run ./examples/vertexai/imagegenerator/main.go console
+
+# 查看帮助信息
+go run ./examples/vertexai/imagegenerator/main.go help
+```
+
+#### 8.1.4 使用场景
+
+- 学习如何创建和使用 Vertex AI 图像生成工具
+- 了解如何集成 Vertex AI 服务
+- 构建图像生成代理
+
+## 9. MCP 示例 (mcp/)
+
+### 9.1 示例目的
+
+MCP 示例演示了如何使用 ADK-Go 框架创建一个 MCP（Model Configuration Protocol）代理。
+
+### 9.2 示例代码
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"os"
+
+	"github.com/sjzsdu/adk-go/agent/llmagent"
+	"github.com/sjzsdu/adk-go/full"
+	"github.com/sjzsdu/adk-go/runner"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Create MCP agent
+	mcpAgent, err := llmagent.New(llmagent.Config{
+		Name:        "mcp-agent",
+		Description: "MCP agent",
+		Model:       "gemini-1.5-pro",
+		Instruction: "You are an MCP agent. Respond to MCP requests.",
+	})
+	if err != nil {
+		log.Fatalf("Failed to create MCP agent: %v", err)
+	}
+
+	// Create a runner
+	runnerCfg := runner.Config{
+		AppName:   "mcp-app",
+		RootAgent: mcpAgent,
+	}
+
+	// Launcher handles parsing command line arguments and running the app
+	l := full.NewLauncher()
+	if err := l.ParseAndRun(ctx, runnerCfg, os.Args[1:]); err != nil {
+		log.Fatalf("Failed to run: %v\n\n%s", err, l.FormatSyntax())
+	}
+}
+```
+
+### 9.3 运行说明
+
+```bash
+# 运行 MCP 代理
+go run ./examples/mcp/main.go mcp
+
+# 查看帮助信息
+go run ./examples/mcp/main.go help
+```
+
+### 9.4 使用场景
+
+- 学习如何创建 MCP 代理
+- 了解 MCP 协议的基本概念
+- 构建 MCP 兼容的代理
+
+## 10. 示例分类和使用场景
+
+| 示例类型 | 示例名称 | 使用场景 |
+|----------|----------|----------|
+| 基础示例 | quickstart | 了解 ADK-Go 框架的基本结构 |
+| 服务器示例 | rest | 构建 REST API 服务 |
+| 远程代理示例 | a2a | 构建分布式代理系统 |
+| Web 示例 | web | 构建可视化代理服务 |
+| 工作流代理示例 | sequential | 构建按顺序执行的工作流 |
+| 工作流代理示例 | parallel | 构建并行执行的工作流 |
+| 工作流代理示例 | loop | 构建迭代优化的工作流 |
+| 工作流代理示例 | sequentialCode | 构建代码驱动的工作流 |
+| 工具示例 | loadartifacts | 处理和分析制品 |
+| 工具示例 | multipletools | 构建需要多种工具的代理 |
+| Vertex AI 示例 | imagegenerator | 构建图像生成代理 |
+| MCP 示例 | mcp | 构建 MCP 兼容的代理 |
+
+## 11. 最佳实践
+
+### 11.1 示例学习最佳实践
+
+- 从简单示例开始，逐步学习复杂示例
+- 理解每个示例的核心功能和设计思路
+- 尝试修改示例，扩展其功能
+- 结合文档学习，深入理解 ADK-Go 框架
+
+### 11.2 示例开发最佳实践
+
+- 遵循示例模板（EXAMPLE.md）创建新示例
+- 保持示例简洁，专注于演示一个或几个功能
+- 添加详细的注释，说明示例的功能和使用方法
+- 提供清晰的运行说明
+
+## 12. 总结
+
+ADK-Go 示例库提供了丰富的示例应用，覆盖了框架的各种功能和使用场景。通过学习这些示例，您可以快速了解 ADK-Go 框架的基本结构和使用方法，为开发自己的代理应用打下基础。
+
+建议您按照以下顺序学习示例：
+1. quickstart：了解框架的基本结构
+2. rest：学习 REST API 服务开发
+3. workflowagents/sequential：学习工作流代理的基本概念
+4. tools/multipletools：学习工具系统的使用
+5. 根据您的需求选择其他示例
+
+通过深入学习和实践这些示例，您将能够熟练使用 ADK-Go 框架开发各种类型的代理应用。
