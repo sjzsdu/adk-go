@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 	"net"
 	"net/http"
@@ -25,14 +26,11 @@ import (
 
 	"github.com/a2aproject/a2a-go/a2a"
 	"github.com/a2aproject/a2a-go/a2asrv"
-	"google.golang.org/genai"
-
 	"github.com/sjzsdu/adk-go/agent"
 	"github.com/sjzsdu/adk-go/agent/llmagent"
 	"github.com/sjzsdu/adk-go/agent/remoteagent"
 	"github.com/sjzsdu/adk-go/cmd/launcher"
 	"github.com/sjzsdu/adk-go/cmd/launcher/full"
-	"github.com/sjzsdu/adk-go/model/gemini"
 	"github.com/sjzsdu/adk-go/runner"
 	"github.com/sjzsdu/adk-go/server/adka2a"
 	"github.com/sjzsdu/adk-go/session"
@@ -42,20 +40,22 @@ import (
 )
 
 // newWeatherAgent creates a simple LLM-agent as in the quickstart example.
-func newWeatherAgent(ctx context.Context) agent.Agent {
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
-		APIKey: os.Getenv("GOOGLE_API_KEY"),
-	})
-	if err != nil {
-		log.Fatalf("Failed to create a model: %v", err)
-	}
+func newWeatherAgent(ctx context.Context, modelConfig *modelfactory.Config) agent.Agent {
+	// 从模型配置创建模型
+	model := modelfactory.MustCreateModel(ctx, modelConfig)
+
+	// 配置工具列表，根据模型类型决定使用哪种搜索工具
+	tools := []tool.Tool{}
+
+	// 根据模型类型选择合适的搜索工具
+	tools = append(tools, geminitool.GoogleSearch{})
 
 	agent, err := llmagent.New(llmagent.Config{
 		Name:        "weather_time_agent",
 		Model:       model,
 		Description: "Agent to answer questions about the time and weather in a city.",
-		Instruction: "I can answer your questions about the time and weather in a city.",
-		Tools:       []tool.Tool{geminitool.GoogleSearch{}},
+		Instruction: "I can answer your questions about the time and weather in a city. When you need information about the current weather or time in a specific city, use the google_search tool to find the latest information.",
+		Tools:       tools,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create an agent: %v", err)
@@ -64,7 +64,7 @@ func newWeatherAgent(ctx context.Context) agent.Agent {
 }
 
 // startWeatherAgentServer starts an HTTP server which exposes a weather agent using A2A (Agent-To-Agent) protocol.
-func startWeatherAgentServer() string {
+func startWeatherAgentServer(ctx context.Context, modelConfig *modelfactory.Config) string {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatalf("Failed to bind to a port: %v", err)
@@ -75,8 +75,7 @@ func startWeatherAgentServer() string {
 	log.Printf("Starting A2A server on %s", baseURL.String())
 
 	go func() {
-		ctx := context.Background()
-		agent := newWeatherAgent(ctx)
+		agent := newWeatherAgent(ctx, modelConfig)
 
 		agentPath := "/invoke"
 		agentCard := &a2a.AgentCard{
@@ -111,7 +110,13 @@ func startWeatherAgentServer() string {
 func main() {
 	ctx := context.Background()
 
-	a2aServerAddress := startWeatherAgentServer()
+	// 解析命令行参数
+	flag.Parse()
+
+	// 从命令行参数创建模型配置
+	modelConfig := modelfactory.NewFromFlags()
+
+	a2aServerAddress := startWeatherAgentServer(ctx, modelConfig)
 
 	remoteAgent, err := remoteagent.NewA2A(remoteagent.A2AConfig{
 		Name:            "A2A Weather agent",
