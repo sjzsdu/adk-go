@@ -137,6 +137,7 @@ func (l *consoleLauncher) Run(ctx context.Context, config *launcher.Config) erro
 
 	if isPiped {
 		// Read all input from pipe
+		reader := bufio.NewReader(os.Stdin)
 		userInput, err := reader.ReadString(0) // Read until EOF
 		if err != nil && err.Error() != "EOF" {
 			log.Fatal(err)
